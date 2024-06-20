@@ -1,7 +1,5 @@
 #include <WiFi.h>
 #include <WebServer.h>
-#include <freertos/FreeRTOS.h>
-#include <freertos/task.h>
 
 // Reemplaza con las credenciales de tu red WiFi
 const char* ssid = "Cybersystech";
@@ -10,23 +8,25 @@ const char* password = "00000000";
 // Crea una instancia del servidor web en el puerto 80
 WebServer servidor(80);
 
-// Define el pin GPIO donde está conectado el LED
-const int pinLed = 2;
+// Define los pines GPIO para los LEDs
+const int pinLed1 = 2; // LED interno
+const int pinLed2 = 4; // Define el pin para el segundo LED
+const int pinLed3 = 5; // Define el pin para el tercer LED
 
-// Variable para almacenar el estado actual del LED (encendido/apagado)
-volatile bool estadoLed = false;
-
-// Prototipos de funciones para las tareas de FreeRTOS
-void tareaServidorWeb(void *pvParameters);
-void tareaControlLed(void *pvParameters);
+// Prototipos de funciones
 void manejarRaiz();
-void manejarToggleLed();
-void manejarEstadoLed();
+void manejarLed1();
+void manejarLed2();
+void manejarLed3();
 
 void setup() {
-  Serial.begin(115200); // Inicia la comunicación serial a 115200 baudios.
-  pinMode(pinLed, OUTPUT); // Configura el pin del LED como salida.
-  digitalWrite(pinLed, LOW); // Asegura que el LED esté apagado al iniciar.
+  Serial.begin(115200);
+  pinMode(pinLed1, OUTPUT);
+  pinMode(pinLed2, OUTPUT);
+  pinMode(pinLed3, OUTPUT);
+  digitalWrite(pinLed1, LOW);
+  digitalWrite(pinLed2, LOW);
+  digitalWrite(pinLed3, LOW);
 
   // Conexión a la red WiFi
   Serial.print("Conectando a ");
@@ -40,63 +40,51 @@ void setup() {
   Serial.println("WiFi conectado.");
   Serial.println("Dirección IP: ");
   Serial.println(WiFi.localIP());
-  servidor.begin(); // Inicia el servidor web.
+  servidor.begin();
 
   // Define las rutas del servidor web
   servidor.on("/", manejarRaiz);
-  servidor.on("/toggle", manejarToggleLed);
-  servidor.on("/estado", manejarEstadoLed);
-
-  // Crea tareas en diferentes núcleos para el servidor web y el control del LED
-  xTaskCreatePinnedToCore(tareaServidorWeb, "TareaServidorWeb", 10000, NULL, 1, NULL, 0);
-  xTaskCreatePinnedToCore(tareaControlLed, "TareaControlLed", 10000, NULL, 1, NULL, 1);
+  servidor.on("/led1", manejarLed1);
+  servidor.on("/led2", manejarLed2);
+  servidor.on("/led3", manejarLed3);
 }
 
 void loop() {
-  // El loop principal está vacío ya que estamos utilizando tareas de FreeRTOS.
-}
-
-void tareaServidorWeb(void *pvParameters) {
-  for (;;) {
-    servidor.handleClient(); // Maneja los clientes del servidor web.
-    delay(1); // Pequeña pausa para permitir el cambio de contexto entre tareas.
-  }
-}
-
-void tareaControlLed(void *pvParameters) {
-  for (;;) {
-    // Aquí se podría agregar código para controlar el LED basado en alguna condición.
-    delay(1000); // Un delay para simular trabajo en la tarea.
-  }
+  servidor.handleClient();
 }
 
 void manejarRaiz() {
-  String estado = estadoLed ? "ENCENDIDO" : "APAGADO";
   String html = "<!DOCTYPE html><html>"
-                "<head><title>Control de LED ESP32</title>"
-                "<script>"
-                "setInterval(function() {"
-                "fetch('/estado').then(response => response.text()).then(data => {"
-                "document.getElementById('estadoLed').innerText = data;"
-                "});"
-                "}, 1000);"
-                "</script>"
-                "</head>"
+                "<head><title>Control de LEDs ESP32</title></head>"
                 "<body>"
-                "<h1>Control de LED ESP32</h1>"
-                "<p>Estado del LED: <strong>" + estado + "</strong></p>"
-                "<p><a href=\"/toggle\"><button style='height:100px;width:200px;font-size:30px;'>Cambiar Estado del LED</button></a></p>"
+                "<h1>Control de LEDs ESP32</h1>"
+                "<p><a href=\"/led1\"><button>LED 1</button></a></p>"
+                "<p><a href=\"/led2\"><button>LED 2</button></a></p>"
+                "<p><a href=\"/led3\"><button>LED 3</button></a></p>"
                 "</body></html>";
   servidor.send(200, "text/html", html);
 }
 
-void manejarToggleLed() {
-  estadoLed = !estadoLed;
-  digitalWrite(pinLed, estadoLed ? HIGH : LOW);
+void manejarLed1() {
+  digitalWrite(pinLed1, HIGH);
+  delay(300);
+  digitalWrite(pinLed1, LOW);
   servidor.sendHeader("Location", "/");
   servidor.send(303);
 }
 
-void manejarEstadoLed() {
-  servidor.send(200, "text/plain", (estadoLed ? "ENCENDIDO" : "APAGADO"));
+void manejarLed2() {
+  digitalWrite(pinLed2, HIGH);
+  delay(300);
+  digitalWrite(pinLed2, LOW);
+  servidor.sendHeader("Location", "/");
+  servidor.send(303);
+}
+
+void manejarLed3() {
+  digitalWrite(pinLed3, HIGH);
+  delay(300);
+  digitalWrite(pinLed3, LOW);
+  servidor.sendHeader("Location", "/");
+  servidor.send(303);
 }
